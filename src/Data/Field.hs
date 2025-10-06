@@ -117,17 +117,20 @@ rcp MulUnit = Just MulUnit
 rcp (MulInverse a) = Just a
 rcp a = Just $ MulInverse a
 
-eval :: (Fractional a, Eq a) => Field (Maybe a) -> Maybe a
-eval = cata $ \case
-  PureF a -> a
+eval' :: (Eq a, Fractional a) => Field a -> Maybe a
+eval' = cataM $ \case
+  PureF a -> Just a
   AddUnitF -> Just 0
   MulUnitF -> Just 1
-  AddInverseF a -> negate <$> a
-  MulInverseF a -> if a == Just 0
+  AddInverseF a -> Just $ negate a
+  MulInverseF a -> if a == 0
     then Nothing
-    else recip <$> a
-  AddF a b -> liftA2 (+) a b
-  MulF a b -> liftA2 (*) a b
+    else Just $ recip a
+  AddF a b -> Just $ a + b
+  MulF a b -> Just $ a * b
+
+eval :: (Integral a, Fractional b) => Field a -> Maybe b
+eval = fmap fromRational . eval' . fmap toRational
 
 cataM :: (Recursive t, Traversable (Base t), Monad m)
   => (Base t a -> m a)
