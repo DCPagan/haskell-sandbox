@@ -14,9 +14,18 @@
 module Data.Field
   ( Field(..)
   , FieldF(..)
+  , add
+  , mul
   , eval
+    -- |Formatting
   , formatPrefix
-  , formatTree) where
+  , formatTree
+    -- |Folding
+  , flatMapField
+  , flatMapSumField
+  , flatMapProductField
+  , sumField
+  , productField) where
 
 import Control.Monad
 import Control.Monad.Reader
@@ -37,6 +46,16 @@ data Field a where
 
 makeBaseFunctor ''Field
 
+instance (Show a, Show b) => Show (FieldF a b) where
+  show = \case
+    PureF a -> show a
+    AddUnitF -> "0"
+    MulUnitF -> "1"
+    AddInverseF b -> '-':show b
+    MulInverseF b -> '/':show b
+    AddF a b -> "(+ " ++ show a ++ " " ++ show b ++ ")"
+    MulF a b -> "(* " ++ show a ++ " " ++ show b ++ ")"
+
 instance Applicative Field where
   pure = Pure
   Pure f <*> a = f <$> a
@@ -55,6 +74,16 @@ instance Monad Field where
   MulInverse a >>= k = MulInverse $ a >>= k
   Add a b >>= k = Add (a >>= k) (b >>= k)
   Mul a b >>= k = Mul (a >>= k) (b >>= k)
+
+add :: Field a -> Field a -> Field a
+add AddUnit a = a
+add a AddUnit = a
+add a b = Add a b
+
+mul :: Field a -> Field a -> Field a
+mul MulUnit a = a
+mul a MulUnit = a
+mul a b = Mul a b
 
 eval :: (Fractional a, Eq a) => Field (Maybe a) -> Maybe a
 eval = cata $ \case
@@ -157,3 +186,22 @@ formatTree = flip execWriterT "" . flip runReaderT 0 . cata f
 
 instance (Show a) => Show (Field a) where
   show = formatPrefix
+
+flatMapField :: (Field b -> Field b -> Field b)
+  -> Field b
+  -> (a -> Field b)
+  -> [a]
+  -> Field b
+flatMapField op unit k = foldr (op . k) unit
+
+flatMapSumField :: (a -> Field b) -> [a] -> Field b
+flatMapSumField = flatMapField add AddUnit
+
+flatMapProductField :: (a -> Field b) -> [a] -> Field b
+flatMapProductField = flatMapField mul MulUnit
+
+sumField :: [a] -> Field a
+sumField = flatMapSumField Pure
+
+productField :: [a] -> Field a
+productField = flatMapProductField Pure

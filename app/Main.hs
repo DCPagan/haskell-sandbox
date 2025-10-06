@@ -7,10 +7,14 @@ import Control.Monad.Trans
 
 import Data.Field
 
+expr :: Field Integer
+expr = Mul x y
+  where
+    x = MulInverse $ Pure 2
+    y = lowerCodensity @Field @Integer $ do
+      a <- Codensity $ \k -> flatMapSumField k [0..3]
+      b <- Codensity $ \k -> mul (k 2) (k 4)
+      lift $ Add (Pure a) (Pure b)
+
 main :: IO ()
-main = print $ lowerCodensity @Field @Integer $ do
-  x <- reset $ do
-    a <- shift $ \k -> lift $ Mul (k 3) (k 5)
-    let b = MulInverse $ Pure 2
-    lift $ Mul (Pure a) b
-  lift $ Pure x
+main = print expr
