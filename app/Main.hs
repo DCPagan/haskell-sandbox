@@ -8,13 +8,13 @@ import Control.Monad.Trans
 import Data.Field
 
 expr :: Field Integer
-expr = Mul x y
+expr = mul x y
   where
-    x = MulInverse $ Pure 2
+    x = MulInverse $ num 2
     y = lowerCodensity @Field @Integer $ do
-      a <- Codensity $ \k -> flatMapSumField k [0..3]
+      a <- Codensity $ \k -> flatMapSum k [0..3]
       b <- Codensity $ \k -> mul (k 2) (k 4)
-      lift $ Add (Pure a) (Pure b)
+      lift $ add (num a) (num b)
 
 main :: IO ()
 main = print expr

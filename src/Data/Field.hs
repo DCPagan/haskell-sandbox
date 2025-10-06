@@ -14,18 +14,25 @@
 module Data.Field
   ( Field(..)
   , FieldF(..)
+  , num
+  , zero
+  , one
   , add
   , mul
+  , neg
+  , rcp
   , eval
     -- |Formatting
   , formatPrefix
   , formatTree
     -- |Folding
   , flatMapField
-  , flatMapSumField
-  , flatMapProductField
+  , flatMapSum
+  , flatMapProduct
   , sumField
-  , productField) where
+  , productField
+  , sum'
+  , product') where
 
 import Control.Monad
 import Control.Monad.Reader
@@ -75,15 +82,40 @@ instance Monad Field where
   Add a b >>= k = Add (a >>= k) (b >>= k)
   Mul a b >>= k = Mul (a >>= k) (b >>= k)
 
+zero :: Field a
+zero = AddUnit
+
+one :: Field a
+one = MulUnit
+
+num :: (Eq a, Num a) => a -> Field a
+num = \case
+  0 -> AddUnit
+  1 -> MulUnit
+  x -> Pure x
+
 add :: Field a -> Field a -> Field a
 add AddUnit a = a
 add a AddUnit = a
 add a b = Add a b
 
 mul :: Field a -> Field a -> Field a
+mul AddUnit _ = AddUnit
+mul _ AddUnit = AddUnit
 mul MulUnit a = a
 mul a MulUnit = a
 mul a b = Mul a b
+
+neg :: Field a -> Field a
+neg AddUnit = AddUnit
+neg (AddInverse a) = a
+neg a = AddInverse a
+
+rcp :: Field a -> Maybe (Field a)
+rcp AddUnit = Nothing
+rcp MulUnit = Just MulUnit
+rcp (MulInverse a) = Just a
+rcp a = Just $ MulInverse a
 
 eval :: (Fractional a, Eq a) => Field (Maybe a) -> Maybe a
 eval = cata $ \case
@@ -194,14 +226,20 @@ flatMapField :: (Field b -> Field b -> Field b)
   -> Field b
 flatMapField op unit k = foldr (op . k) unit
 
-flatMapSumField :: (a -> Field b) -> [a] -> Field b
-flatMapSumField = flatMapField add AddUnit
+flatMapSum :: (a -> Field b) -> [a] -> Field b
+flatMapSum = flatMapField add zero
 
-flatMapProductField :: (a -> Field b) -> [a] -> Field b
-flatMapProductField = flatMapField mul MulUnit
+flatMapProduct :: (a -> Field b) -> [a] -> Field b
+flatMapProduct = flatMapField mul one
 
 sumField :: [a] -> Field a
-sumField = flatMapSumField Pure
+sumField = flatMapSum Pure
 
 productField :: [a] -> Field a
-productField = flatMapProductField Pure
+productField = flatMapProduct Pure
+
+sum' :: (Eq a, Num a) => [a] -> Field a
+sum' = flatMapSum num
+
+product' :: (Eq a, Num a) => [a] -> Field a
+product' = flatMapProduct num
