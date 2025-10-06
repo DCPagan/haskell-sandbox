@@ -52,7 +52,7 @@ instance Monad Field where
   AddUnit >>= _ = AddUnit
   MulUnit >>= _ = MulUnit
   AddInverse a >>= k = AddInverse $ a >>= k
-  MulInverse a >>= k = AddInverse $ a >>= k
+  MulInverse a >>= k = MulInverse $ a >>= k
   Add a b >>= k = Add (a >>= k) (b >>= k)
   Mul a b >>= k = Mul (a >>= k) (b >>= k)
 
@@ -135,8 +135,8 @@ formatPrefix = flip execWriterT "" . flip runReaderT 0 . cata f
       PureF a -> tell $ show a
       AddUnitF -> tell "0"
       MulUnitF -> tell "1"
-      AddInverseF a -> tell "(-" >> a >> tell ")"
-      MulInverseF a -> tell "(/" >> a >> tell ")"
+      AddInverseF a -> tell "-" >> a
+      MulInverseF a -> tell "/" >> a
       AddF a b -> formatNodePrefix "+" a b
       MulF a b -> formatNodePrefix "*" a b
 
